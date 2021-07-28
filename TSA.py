@@ -29,7 +29,7 @@ consumer_secret = conf['API Secret Key']
 access_token = conf['Access Token']
 access_secret = conf['Access Token Secret']
 
-#%%
+
 def access():
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_secret)
@@ -37,34 +37,76 @@ def access():
     return api
 
 api = access()
+# user = api.get_user('matteosalvinimi')
+# print(user.screen_name)
+# print(user.followers_count)
+# for friend in user.friends():
+#    print(friend.screen_name)
+
 #sentiment analysis
 
 def percentage (part,whole):
     return 100 * float(part)/float(whole)
 
-keyword = input("Parola da cercare:\n")
-num_tweets = int(input("Numbero di tweet da cercare:\n"))
+# keyword = input("Parola da cercare:\n")
+# num_tweets = int(input("Numbero di tweet da cercare:\n"))
+# language = input("lingua:\n")
+keyword = 'covid'
+num_tweets = 100
+language = 'en'
+
 tweet_list = []
-tweets = tweepy.Cursor(api.search, q=keyword).items(num_tweets)
+Cursor = tweepy.Cursor(api.search, q=keyword, language='en', tweet_mode='extended').items(num_tweets)
+results = [status._json for status in Cursor]
+tweets=[]
+
+for result in results:
+    #print(json.dumps(result, indent=2))
+    #if its a retweet
+    if result["retweet_count"]>0:
+        tweets.append(result["retweeted_status"]["full_text"])
+    else:
+        tweets.append(result["full_text"])
+#remove non english tweets
+tweets_en = []
 for tweet in tweets:
-    text = tweet.text
-    print(text)
-    tweet_list.append(text)
+    try:
+        lan=detect(tweet)
+        if lan=='en':
+            tweets_en.append(tweet)
+    except:
+        pass
+
+tweet_list = pd.DataFrame(tweets_en)
+#cleaning
+tweet_list.drop_duplicates(inplace=True) #clean duplicate tweets
+#tweet_list = tweet_list.iloc[:,0]
+#tweet_list.rename(columns={'0':'Text'})
+#hashtag extraction
+tweet_list["hashtag"] = tweet_list[0].apply(lambda x: re.findall(r"#(\w+)",x))
+#TODO hashtag with more than one word (?)
+#remove link
+tweet_list[0] = tweet_list[0].apply(lambda x: re.sub(r"https\S+","",x))
+#remove mentions
+tweet_list[0] = tweet_list[0].apply(lambda x: re.sub(r"@\S+","",x))
+#remove digits
+#tweet_list[0] = tweet_list[0].astype(str).str.replace('\d+','')
+#lower case
+#tweet_list[0] = tweet_list[0].apply(lambda x: x.lower())
+#remove punctuation & emojis
+#tweet_list[0] = tweet_list[0].apply(lambda x: re.sub(r"[^\w\s]","",x))
 
 #%%
 positive = 0
 negative = 0
 neutral = 0
 polarity = 0
-tweet_list = []
+
 neutral_list = []
 positive_list = []
 negative_list = []
-
-for tweet in tweets:
-    text = tweet.text
-    print(text)
-    tweet_list.append(text)
+for tweet in tweet_list.iloc[:,0]:
+    text = tweet
     analysis = TextBlob(text)
     score = SentimentIntensityAnalyzer().polarity_scores(text)
     neg = score['neg']
@@ -88,7 +130,6 @@ perc_neutral = percentage(neutral,num_tweets)
 perc_negative = percentage(negative,num_tweets)
 perc_polarity = percentage(polarity,num_tweets)
 
-tweet_list = pd.DataFrame(tweet_list)
 neutral_list = pd.DataFrame(neutral_list)
 positive_list = pd.DataFrame(positive_list)
 negative_list = pd.DataFrame(negative_list)
@@ -107,3 +148,5 @@ plt.title("Sentiment Analysis Result for keyword = "+keyword+"")
 plt.axis('equal')
 plt.show()
 
+
+# %%
