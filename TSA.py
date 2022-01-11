@@ -244,9 +244,9 @@ class TSA():
 #%%
 if __name__ == "__main__":
     keyword = 'covid'
-    num_tweets = 10
+    num_tweets = 50
     language = 'en'
     tsa = TSA()
     tweet_list = tsa.keyword_search(keyword,num_tweets)
-    tsa.create_color_wordcloud(tweet_list["very_clean_text"],"jak logo2.png")
+    tsa.create_color_wordcloud(tweet_list["very_clean_text"],"palette.png")
 # %%
